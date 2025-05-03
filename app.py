@@ -23,7 +23,7 @@ CACHE_VIDEO_DIR    = BASE_TEMP_DIR / "cache_video"
 
 # Limits & constants
 MAX_CACHE_SIZE     = 500 * 1024 * 1024  # 500 MB
-COOKIES_FILE       = "cookies.txt"          # Path to cookies (if needed)
+COOKIES_FILE       = "cookies.txt"        # Path to cookies (if needed)
 SEARCH_API_URL     = "https://odd-block-a945.tenopno.workers.dev/search?title="
 
 # Ensure directories exist
@@ -64,11 +64,11 @@ def get_working_proxy(max_attempts=5):
     return None
 
 
-def proxy_request(url, params=None, max_attempts=5, fallback_direct=True):
+def proxy_request(url: str, params=None, max_attempts=5, fallback_direct=True):
     """GET with proxy retry; optionally fallback to direct."""
     for _ in range(max_attempts):
         proxy = get_working_proxy()
-        kwargs = {"timeout": 15}
+        kwargs = {"timeout": (10, 120)}  # (connect, read) timeouts in seconds
         if proxy:
             kwargs["proxies"] = {"http": f"http://{proxy}", "https": f"http://{proxy}"}
         try:
@@ -76,7 +76,7 @@ def proxy_request(url, params=None, max_attempts=5, fallback_direct=True):
         except (ProxyError, RequestException):
             time.sleep(1)
     if fallback_direct:
-        return requests.get(url, params=params, timeout=15)
+        return requests.get(url, params=params, timeout=(10, 120))
     raise RequestException("All proxy attempts failed and direct fallback disabled.")
 
 # =============================================================================
@@ -121,7 +121,7 @@ def download_audio(video_url: str) -> str:
         'noplaylist': True,
         'quiet': True,
         'cookiefile': COOKIES_FILE,
-        'socket_timeout': 60,
+        'socket_timeout': 120,   # increased socket timeout
         'max_memory': 450000,
     }
     if proxy:
@@ -153,7 +153,7 @@ def download_video(video_url: str) -> str:
         'quiet': True,
         'cookiefile': COOKIES_FILE,
         'merge_output_format': 'mp4',
-        'socket_timeout': 60,
+        'socket_timeout': 120,   # increased socket timeout
         'max_memory': 450000,
     }
     if proxy:
@@ -246,11 +246,9 @@ def download_video_endpoint():
 if __name__ == '__main__':
     # For production, use waitress or gunicorn instead of Flask dev server
     from waitress import serve
-    serve(app, host='0.0.0.0', port=5000)
-
-
-
-
-
-
-
+    serve(
+        app,
+        host='0.0.0.0',
+        port=5000,
+        channel_timeout=300  # increase worker timeout to 5 minutes
+    )
