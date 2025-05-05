@@ -3,4 +3,4 @@ yt-dlp
 gunicorn==21.2.0
 requests
 youtube-search
-
+aiohttp
