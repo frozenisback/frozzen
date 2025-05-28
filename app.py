@@ -45,7 +45,7 @@ async def flush_updates(session):
             params={"offset": last_id + 1}
         )
 
-async def wait_for_audio_file(timeout: int = 60) -> str | None:
+async def wait_for_audio_file(timeout: int = 10) -> str | None:
     async with aiohttp.ClientSession() as session:
         await flush_updates(session)
         start = time.time()
