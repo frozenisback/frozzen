@@ -27,13 +27,6 @@ def url_to_hash(url: str) -> str:
     """Generate a unique hash for a URL."""
     return hashlib.md5(url.encode('utf-8')).hexdigest()
 
-async def send_doown_command(url: str):
-    async with aiohttp.ClientSession() as session:
-        await session.post(
-            f"{TELEGRAM_API_URL}/sendMessage",
-            json={"chat_id": CHAT_ID, "text": f"/doown {url}"}
-        )
-
 
 async def send_down_command(url: str):
     async with aiohttp.ClientSession() as session:
@@ -143,48 +136,9 @@ def down():
 
     return asyncio.run(process())
 
-@app.route("/raw-audio")
-def raw_audio():
-    spotify_url = request.args.get("url")
-    if not spotify_url:
-        return jsonify({"error": "Missing Spotify URL"}), 400
-
-    # Hash the Spotify URL to create a unique cache key
-    audio_hash = url_to_hash(spotify_url)
-    cached_file_path = os.path.join(CACHE_DIR, f"{audio_hash}.mp3")
-
-    # Return cached file if exists
-    if os.path.exists(cached_file_path):
-        return send_file(cached_file_path, mimetype="audio/mpeg", as_attachment=True)
-
-    async def process():
-        await send_doown_command(spotify_url)
-
-        file_id = await wait_for_audio_file()
-        if not file_id:
-            return jsonify({"error": "Timeout waiting for audio"}), 504
-
-        download_url = await get_file_url(file_id)
-        if not download_url:
-            return jsonify({"error": "Failed to get download URL"}), 500
-
-        # Attempt to use the Telegram file extension if available
-        raw_path = cached_file_path  # default path
-        if download_url.endswith(".ogg"):
-            raw_path = cached_file_path.replace(".raw", ".ogg")
-        elif download_url.endswith(".m4a"):
-            raw_path = cached_file_path.replace(".raw", ".m4a")
-
-        if not await download_file_stream(download_url, raw_path):
-            return jsonify({"error": "Failed to download raw audio"}), 500
-
-        return send_file(raw_path, mimetype="audio/mpeg", as_attachment=True)
-
-    return asyncio.run(process())
-
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
