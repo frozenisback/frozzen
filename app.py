@@ -11,7 +11,7 @@ import hashlib
 app = Flask(__name__)
 
 # —————— Configuration ——————
-BOT_TOKEN        = os.environ.get("BOT_TOKEN", "8481470626:AAEbwlL5pzBjebrpYwJZe3eHH3j99RApwLo")
+BOT_TOKEN        = os.environ.get("BOT_TOKEN", "8481470626:AAGM1w-usYfRuSD3ca3QgtH_HZv2u5cbPuc")
 CHAT_ID          = os.environ.get("CHAT_ID",   "7634862283")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 FILE_BASE_URL    = f"https://api.telegram.org/file/bot{BOT_TOKEN}"
