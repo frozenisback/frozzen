@@ -9,7 +9,7 @@ from asyncio.subprocess import DEVNULL
 app = Flask(__name__)
 
 # —————— Configuration ——————
-BOT_TOKEN        = os.environ.get("BOT_TOKEN", "8481470626:AAGM1w-usYfRuSD3ca3QgtH_HZv2u5cbPuc")
+BOT_TOKEN        = os.environ.get("BOT_TOKEN", "8481470626:AAH-DFbGT4PRTIVl6SEZNImPV5L8NUhWItU")
 CHAT_ID          = os.environ.get("CHAT_ID",   "7634862283")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 FILE_BASE_URL    = f"https://api.telegram.org/file/bot{BOT_TOKEN}"
@@ -75,7 +75,7 @@ async def get_file_url(file_id: str) -> str | None:
             f"{TELEGRAM_API_URL}/getFile",
             params={"file_id": file_id}
         )
-        data = resp.json() if hasattr(resp, "json") else await resp.json()
+        data = await resp.json()
         if not data.get("ok") or "result" not in data:
             print(f"[ERROR] get_file_url failed: {data}")
             return None
@@ -201,6 +201,7 @@ def raw_audio():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
