@@ -5,7 +5,6 @@ import os
 import time
 import subprocess
 from asyncio.subprocess import DEVNULL
-import hashlib
 
 app = Flask(__name__)
 
@@ -35,6 +34,7 @@ async def send_down_command(url: str):
             json={"chat_id": CHAT_ID, "text": f"/down {url}"}
         )
 
+
 async def flush_updates(session):
     resp = await session.get(f"{TELEGRAM_API_URL}/getUpdates")
     data = await resp.json()
@@ -45,7 +45,12 @@ async def flush_updates(session):
             params={"offset": last_id + 1}
         )
 
-async def wait_for_audio_file(timeout: int = 10) -> str | None:
+
+async def wait_for_audio_file(timeout: int = 10) -> dict | None:
+    """
+    Waits for Telegram to send an audio/voice message.
+    Returns the message dict if found, else None.
+    """
     async with aiohttp.ClientSession() as session:
         await flush_updates(session)
         start = time.time()
@@ -53,15 +58,16 @@ async def wait_for_audio_file(timeout: int = 10) -> str | None:
         while time.time() - start < timeout:
             params = {"offset": offset} if offset else {}
             resp = await session.get(f"{TELEGRAM_API_URL}/getUpdates", params=params)
-            data    = await resp.json()
+            data = await resp.json()
             updates = data.get("result", [])
             for upd in updates:
                 offset = upd["update_id"] + 1
                 msg = upd.get("message", {})
                 if "audio" in msg or "voice" in msg:
-                    return (msg.get("audio") or msg.get("voice"))["file_id"]
+                    return msg  # Return full message to get file_size and duration
             await asyncio.sleep(2)
     return None
+
 
 async def get_file_url(file_id: str) -> str | None:
     async with aiohttp.ClientSession() as session:
@@ -76,6 +82,7 @@ async def get_file_url(file_id: str) -> str | None:
         path = data["result"].get("file_path")
         return f"{FILE_BASE_URL}/{path}" if path else None
 
+
 async def download_file_stream(url: str, dest_path: str) -> bool:
     async with aiohttp.ClientSession() as session:
         async with session.get(url, allow_redirects=True) as resp:
@@ -87,6 +94,7 @@ async def download_file_stream(url: str, dest_path: str) -> bool:
                     f.write(chunk)
             return True
 
+
 @app.route("/download")
 def down():
     yt_url = request.args.get("url")
@@ -96,17 +104,35 @@ def down():
     async def process():
         # Trigger Telegram bot to produce .m4a
         await send_down_command(yt_url)
-        # Wait for audio file_id
-        file_id = await wait_for_audio_file()
-        if not file_id:
+
+        # Wait for audio message
+        msg = await wait_for_audio_file()
+        if not msg:
             return jsonify({"error": "Timeout waiting for audio"}), 504
-        # Download .m4a
+
+        # Extract file info
+        file_obj = msg.get("audio") or msg.get("voice")
+        file_id   = file_obj["file_id"]
+        file_size = file_obj.get("file_size", 0)  # bytes
+        duration  = file_obj.get("duration", 0)   # seconds
+
+        # Reject large/long songs
+        if file_size > 8 * 1024 * 1024 or duration > 600:
+            return jsonify({
+                "error": "Songs larger than 8 MB or longer than 10 min are not supported. "
+                         "Please contact @xyz09723 to upgrade your plan."
+            }), 400
+
+        # Get download URL
         download_url = await get_file_url(file_id)
         if not download_url:
             return jsonify({"error": "Failed to get download URL"}), 500
+
+        # Download .m4a
         m4a_path = os.path.join(DOWNLOAD_DIR, f"{file_id}.m4a")
         if not await download_file_stream(download_url, m4a_path):
             return jsonify({"error": "Failed to download .m4a"}), 500
+
         # Convert to MP3
         mp3_path = os.path.join(DOWNLOAD_DIR, f"{file_id}.mp3")
         ffmpeg_cmd = [
@@ -119,11 +145,13 @@ def down():
             mp3_path
         ]
         subprocess.run(ffmpeg_cmd, stdout=DEVNULL, stderr=DEVNULL, check=True)
+
         # Cleanup .m4a
         try:
             os.remove(m4a_path)
         except OSError:
             pass
+
         return send_file(mp3_path, mimetype="audio/mpeg", as_attachment=True)
 
     return asyncio.run(process())
@@ -137,15 +165,35 @@ def raw_audio():
 
     async def process():
         await send_doown_command(spotify_url)
-        file_id = await wait_for_audio_file()
-        if not file_id:
+
+        # Wait for audio message
+        msg = await wait_for_audio_file()
+        if not msg:
             return jsonify({"error": "Timeout waiting for audio"}), 504
+
+        # Extract file info
+        file_obj = msg.get("audio") or msg.get("voice")
+        file_id   = file_obj["file_id"]
+        file_size = file_obj.get("file_size", 0)  # bytes
+        duration  = file_obj.get("duration", 0)   # seconds
+
+        # Reject large/long songs
+        if file_size > 8 * 1024 * 1024 or duration > 600:
+            return jsonify({
+                "error": "Songs larger than 8 MB or longer than 10 min are not supported. "
+                         "Please contact @xyz09723 to upgrade your plan."
+            }), 400
+
+        # Get download URL
         download_url = await get_file_url(file_id)
         if not download_url:
             return jsonify({"error": "Failed to get download URL"}), 500
+
+        # Download raw audio
         raw_path = os.path.join(DOWNLOAD_DIR, f"{file_id}.audio")
         if not await download_file_stream(download_url, raw_path):
             return jsonify({"error": "Failed to download raw audio"}), 500
+
         return send_file(raw_path, mimetype="audio/mpeg", as_attachment=True)
 
     return asyncio.run(process())
@@ -153,8 +201,6 @@ def raw_audio():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
 
 
 
