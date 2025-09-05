@@ -133,26 +133,26 @@ def down():
         if not await download_file_stream(download_url, m4a_path):
             return jsonify({"error": "Failed to download .m4a"}), 500
 
-        # Convert to MP3
+        # Convert to MP3 with fallback
         mp3_path = os.path.join(DOWNLOAD_DIR, f"{file_id}.mp3")
-        ffmpeg_cmd = [
-            "ffmpeg", "-nostdin",
-            "-probesize", "32k", "-analyzeduration", "0",
-            "-i", m4a_path,
-            "-vn", "-codec:a", "libmp3lame", "-b:a", "56k",
-            "-bufsize", "64k", "-rtbufsize", "64k",
-            "-threads", "1",
-            mp3_path
-        ]
-        subprocess.run(ffmpeg_cmd, stdout=DEVNULL, stderr=DEVNULL, check=True)
-
-        # Cleanup .m4a
         try:
-            os.remove(m4a_path)
-        except OSError:
-            pass
-
-        return send_file(mp3_path, mimetype="audio/mpeg", as_attachment=True)
+            ffmpeg_cmd = [
+                "ffmpeg", "-y", "-nostdin",
+                "-i", m4a_path,
+                "-vn", "-acodec", "libmp3lame", "-b:a", "56k",
+                "-threads", "1",
+                mp3_path
+            ]
+            subprocess.run(ffmpeg_cmd, stdout=DEVNULL, stderr=DEVNULL, check=True)
+            # Cleanup .m4a after successful conversion
+            try:
+                os.remove(m4a_path)
+            except OSError:
+                pass
+            return send_file(mp3_path, mimetype="audio/mpeg", as_attachment=True)
+        except subprocess.CalledProcessError:
+            # Fallback: return the .m4a directly
+            return send_file(m4a_path, mimetype="audio/mp4", as_attachment=True)
 
     return asyncio.run(process())
 
@@ -201,11 +201,3 @@ def raw_audio():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-
-
-
-
-
-
-
