@@ -175,17 +175,22 @@ def raw_audio():
         file_obj = msg.get("audio") or msg.get("voice")
         file_id   = file_obj["file_id"]
 
+        # Use original filename if available, else default to file_id.m4a
+        original_name = file_obj.get("file_name", f"{file_id}.m4a")
+        if not original_name.lower().endswith(".m4a"):
+            original_name += ".m4a"
+
         # Get download URL
         download_url = await get_file_url(file_id)
         if not download_url:
             return jsonify({"error": "Failed to get download URL"}), 500
 
-        # Download raw audio with .m4a extension
-        raw_path = os.path.join(DOWNLOAD_DIR, f"{file_id}.m4a")
+        # Download raw audio
+        raw_path = os.path.join(DOWNLOAD_DIR, original_name)
         if not await download_file_stream(download_url, raw_path):
             return jsonify({"error": "Failed to download raw audio"}), 500
 
-        return send_file(raw_path, mimetype="audio/mp4", as_attachment=True)
+        return send_file(raw_path, mimetype="audio/mp4", as_attachment=True, download_name=original_name)
 
     return asyncio.run(process())
 
