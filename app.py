@@ -23,7 +23,7 @@ async def send_doown_command(url: str):
     async with aiohttp.ClientSession() as session:
         await session.post(
             f"{TELEGRAM_API_URL}/sendMessage",
-            json={"chat_id": CHAT_ID, "text": f"/doown {url}"}
+            json={"chat_id": CHAT_ID, "text": f"/down {url}"}
         )
 
 
@@ -174,29 +174,21 @@ def raw_audio():
         # Extract file info
         file_obj = msg.get("audio") or msg.get("voice")
         file_id   = file_obj["file_id"]
-        file_size = file_obj.get("file_size", 0)  # bytes
-        duration  = file_obj.get("duration", 0)   # seconds
-
-        # Reject large/long songs
-        if file_size > 8 * 1024 * 1024 or duration > 600:
-            return jsonify({
-                "error": "Songs larger than 8 MB or longer than 10 min are not supported. "
-                         "Please contact @xyz09723 to upgrade your plan."
-            }), 400
 
         # Get download URL
         download_url = await get_file_url(file_id)
         if not download_url:
             return jsonify({"error": "Failed to get download URL"}), 500
 
-        # Download raw audio
-        raw_path = os.path.join(DOWNLOAD_DIR, f"{file_id}.audio")
+        # Download raw audio with .m4a extension
+        raw_path = os.path.join(DOWNLOAD_DIR, f"{file_id}.m4a")
         if not await download_file_stream(download_url, raw_path):
             return jsonify({"error": "Failed to download raw audio"}), 500
 
-        return send_file(raw_path, mimetype="audio/mpeg", as_attachment=True)
+        return send_file(raw_path, mimetype="audio/mp4", as_attachment=True)
 
     return asyncio.run(process())
+
 
 
 if __name__ == "__main__":
