@@ -46,7 +46,7 @@ async def flush_updates(session):
         )
 
 
-async def wait_for_audio_file(timeout: int = 10) -> dict | None:
+async def wait_for_audio_file(timeout: int = 30) -> dict | None:
     """
     Waits for Telegram to send an audio/voice message.
     Returns the message dict if found, else None.
