@@ -9,8 +9,8 @@ from asyncio.subprocess import DEVNULL
 app = Flask(__name__)
 
 # —————— Configuration ——————
-BOT_TOKEN        = os.environ.get("BOT_TOKEN", "8481470626:AAH-DFbGT4PRTIVl6SEZNImPV5L8NUhWItU")
-CHAT_ID          = os.environ.get("CHAT_ID",   "6565013496")
+BOT_TOKEN        = os.environ.get("BOT_TOKEN", "8481470626:AAGAhMbmscc0zpAtDB7-QiXzCIfqTYreT2w")
+CHAT_ID          = os.environ.get("CHAT_ID",   "7634862283")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
 FILE_BASE_URL    = f"https://api.telegram.org/file/bot{BOT_TOKEN}"
 BASE_DIR         = os.path.dirname(os.path.abspath(__file__))
