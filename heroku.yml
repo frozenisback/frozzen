@@ -4,15 +4,12 @@ build:
 
 run:
   web:
-    command:
-      - sh
-      - -c
-      - >
-        gunicorn app:app \
-        --worker-class gthread \
-        --workers $(( $(nproc) * 2 + 1 )) \
-        --threads 4 \
-        --timeout 500 \
-        --bind 0.0.0.0:$PORT
+    command: >
+      sh -c "gunicorn app:app \
+      --worker-class gthread \
+      --workers $(( $(nproc) * 2 + 1 )) \
+      --threads 4 \
+      --timeout 500 \
+      --bind 0.0.0.0:$PORT"
 
 
