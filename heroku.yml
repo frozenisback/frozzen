@@ -2,5 +2,10 @@ build:
   docker:
     worker: Dockerfile
 run:
-  web: gunicorn app:app --worker-class gthread --threads 1 --workers 1 --timeout 500 --bind 0.0.0.0:$PORT
+  web: gunicorn app:app \
+    --worker-class gthread \
+    --workers $(($(nproc) * 2 + 1)) \
+    --threads 4 \
+    --timeout 500 \
+    --bind 0.0.0.0:$PORT
 
